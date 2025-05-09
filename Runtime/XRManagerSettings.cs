@@ -254,6 +254,7 @@ namespace UnityEngine.XR.Management
             // If a loader is already active, we cannot proceed.
             if (activeLoader != null)
             {
+                Debug.LogWarning(
                     "XR Management has already initialized an active loader in this scene." +
                     " Please make sure to stop all subsystems and deinitialize the active loader before initializing a new one.");
                 yield break;

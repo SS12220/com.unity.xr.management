@@ -245,36 +245,85 @@ namespace UnityEngine.XR.Management
             activeLoader = null;
         }
 
+        /// Coroutine to initialize an XR loader by its name.
+        /// Ensures only one loader is active and handles common errors cleanly.
+        /// </summary>
+        /// <param name="loaderName">The name of the XRLoader to initialize.</param>
         public IEnumerator InitializeLoader(string loaderName)
         {
+            // If a loader is already active, we cannot proceed.
             if (activeLoader != null)
             {
-                Debug.LogWarning(
                     "XR Management has already initialized an active loader in this scene." +
                     " Please make sure to stop all subsystems and deinitialize the active loader before initializing a new one.");
                 yield break;
             }
-            List<XRLoader> _currentLoaders = currentLoaders;
-
-            //index = Mathf.Clamp(index, 0, _currentLoaders.Count - 1);
-            for(int i = 0; i < _currentLoaders.Count ; i++)
+        
+            // Validate input
+            if (string.IsNullOrEmpty(loaderName))
             {
-                Debug.Log(currentLoaders[i].name + "_comparing_with"+ loaderName);
-                if (_currentLoaders[i] != null && _currentLoaders[i].name == loaderName)
+                Debug.LogError("Loader name is empty. Please provide a valid loader name.");
+                yield break;
+            }
+        
+            List<XRLoader> _currentLoaders = currentLoaders;
+        
+            // Check if the loader list is valid
+            if (_currentLoaders == null || _currentLoaders.Count == 0)
+            {
+                Debug.LogError("No XR loaders are available to initialize.");
+                yield break;
+            }
+        
+            bool loaderFound = false;
+        
+            for (int i = 0; i < _currentLoaders.Count; i++)
+            {
+                XRLoader loader = _currentLoaders[i];
+                if (loader != null && loader.name == loaderName)
                 {
-                    if (CheckGraphicsAPICompatibility(_currentLoaders[i]) && _currentLoaders[i].Initialize())
+                    loaderFound = true;
+        
+                    try
                     {
-                        activeLoader = _currentLoaders[i];
-                        m_InitializationComplete = true;
-                        yield break;
+                        if (!CheckGraphicsAPICompatibility(loader))
+                        {
+                            Debug.LogError($"XR loader '{loaderName}' is not compatible with the current graphics API.");
+                            break;
+                        }
+        
+                        if (loader.Initialize())
+                        {
+                            activeLoader = loader;
+                            m_InitializationComplete = true;
+                            Debug.Log($"XR loader '{loaderName}' initialized successfully.");
+                            yield break;
+                        }
+                        else
+                        {
+                            Debug.LogError($"Failed to initialize XR loader '{loaderName}'.");
+                            break;
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogError($"Error initializing XR loader '{loaderName}': {ex.Message}");
+                        break;
                     }
                 }
-
-                yield return null;
+        
+                yield return null; // Allow frame delay between attempts
             }
+        
+            if (!loaderFound)
+            {
+                Debug.LogError($"XR loader '{loaderName}' not found in the current loader list.");
+            }
+        
+            activeLoader = null;
+            m_InitializationComplete = false;
+        }
 
-            activeLoader = null;
-        }
 
         /// <summary>
         /// Attempts to append the given loader to the list of loaders at the given index.

@@ -245,6 +245,37 @@ namespace UnityEngine.XR.Management
             activeLoader = null;
         }
 
+        public IEnumerator InitializeLoader(string loaderName)
+        {
+            if (activeLoader != null)
+            {
+                Debug.LogWarning(
+                    "XR Management has already initialized an active loader in this scene." +
+                    " Please make sure to stop all subsystems and deinitialize the active loader before initializing a new one.");
+                yield break;
+            }
+            List<XRLoader> _currentLoaders = currentLoaders;
+
+            //index = Mathf.Clamp(index, 0, _currentLoaders.Count - 1);
+            for(int i = 0; i < _currentLoaders.Count ; i++)
+            {
+                Debug.Log(currentLoaders[i].name + "_comparing_with"+ loaderName);
+                if (_currentLoaders[i] != null && _currentLoaders[i].name == loaderName)
+                {
+                    if (CheckGraphicsAPICompatibility(_currentLoaders[i]) && _currentLoaders[i].Initialize())
+                    {
+                        activeLoader = _currentLoaders[i];
+                        m_InitializationComplete = true;
+                        yield break;
+                    }
+                }
+
+                yield return null;
+            }
+
+            activeLoader = null;
+        }
+
         /// <summary>
         /// Attempts to append the given loader to the list of loaders at the given index.
         /// </summary>
